@@ -1,0 +1,4 @@
+pyserial
+fastmcp
+matplotlib
+numpy

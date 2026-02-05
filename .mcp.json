@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "ppk2": {
+      "command": "uvx",
+      "args": [
+        "--with", "pyserial",
+        "--with", "fastmcp",
+        "fastmcp", "run", "src/ppk2_mcp_server.py"
+      ]
+    }
+  }
+}

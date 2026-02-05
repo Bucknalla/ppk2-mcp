@@ -1,0 +1,48 @@
+name: Build and Release MCPB
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-mcpb:
+    name: Build MCPB Package
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Update version in package script
+        run: |
+          # Extract version from release tag (removes 'v' prefix if present)
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "Building version: $VERSION"
+          
+          # Update version in package_extension.py
+          sed -i "s/\"version\": \"1.0.0\"/\"version\": \"$VERSION\"/" package_extension.py
+
+      - name: Build MCPB package
+        run: python package_extension.py
+
+      - name: Upload MCPB to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.mcpb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcpb-package
+          path: dist/*.mcpb
+          retention-days: 30
