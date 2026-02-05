@@ -8,7 +8,7 @@ An MCP (Model Context Protocol) server for Nordic Semiconductor's [Power Profile
 
 ## Features
 
-- **13 MCP tools** for complete PPK2 control via LLMs
+- **12 MCP tools** for complete PPK2 control via LLMs
 - **100kHz sampling rate** for detailed power analysis
 - **Real-time streaming** via TCP for live visualization
 - **Source and Ampere meter modes** for flexible measurement setups
@@ -16,7 +16,17 @@ An MCP (Model Context Protocol) server for Nordic Semiconductor's [Power Profile
 
 ## Quick Start
 
-### Installation
+### Using with Claude Desktop (MCPB)
+
+The easiest way to install is via the pre-built MCPB package:
+
+1. Download the latest `.mcpb` file from the [Releases page](https://github.com/Bucknalla/ppk2-mcp/releases)
+2. Double-click the `.mcpb` file to install in Claude Desktop
+3. Restart Claude Desktop
+
+The MCP server will be automatically configured and ready to use.
+
+### Manual Installation
 
 ```bash
 # Clone the repository
