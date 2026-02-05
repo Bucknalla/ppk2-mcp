@@ -1,9 +1,8 @@
 name: Build and Release MCPB
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
 
 permissions:
   contents: write
@@ -16,6 +15,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -25,7 +26,8 @@ jobs:
       - name: Update version in package script
         run: |
           # Extract version from release tag (removes 'v' prefix if present)
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${VERSION#v}"
           echo "Building version: $VERSION"
           
           # Update version in package_extension.py
@@ -34,11 +36,11 @@ jobs:
       - name: Build MCPB package
         run: python package_extension.py
 
-      - name: Create Release and Upload MCPB
+      - name: Upload MCPB to Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.release.tag_name }}
           files: dist/*.mcpb
-          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
