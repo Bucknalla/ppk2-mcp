@@ -1,5 +1,7 @@
 # PPK2 MCP Server
 
+> **Note:** This project is a fork of [IRNAS/ppk2-api-python](https://github.com/IRNAS/ppk2-api-python), which provides the underlying Python API for the PPK2. This fork adds an MCP server layer to enable AI-assisted power profiling.
+
 An MCP (Model Context Protocol) server for Nordic Semiconductor's [Power Profiler Kit II (PPK2)](https://www.nordicsemi.com/Software-and-tools/Development-Tools/Power-Profiler-Kit-2), enabling AI-assisted power profiling of embedded devices.
 
 ![Power Profiler Kit II](https://github.com/IRNAS/ppk2-api-python/blob/master/images/power-profiler-kit-II.jpg)
