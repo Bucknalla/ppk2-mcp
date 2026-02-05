@@ -1,8 +1,9 @@
 name: Build and Release MCPB
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
@@ -33,10 +34,11 @@ jobs:
       - name: Build MCPB package
         run: python package_extension.py
 
-      - name: Upload MCPB to Release
+      - name: Create Release and Upload MCPB
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*.mcpb
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
