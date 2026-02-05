@@ -1,64 +1,212 @@
-## Description
-The new Nordic Semiconductor's [Power Profiler Kit II (PPK 2)](https://www.nordicsemi.com/Software-and-tools/Development-Tools/Power-Profiler-Kit-2) is very useful for real time measurement of device power consumption. The official [nRF Connect Power Profiler tool](https://github.com/NordicSemiconductor/pc-nrfconnect-ppk) provides a friendly GUI with real-time data display. However there is no support for automated power monitoring. The puropose of this Python API is to enable automated power monitoring and data logging in Python applications.
+# PPK2 MCP Server
+
+An MCP (Model Context Protocol) server for Nordic Semiconductor's [Power Profiler Kit II (PPK2)](https://www.nordicsemi.com/Software-and-tools/Development-Tools/Power-Profiler-Kit-2), enabling AI-assisted power profiling of embedded devices.
 
 ![Power Profiler Kit II](https://github.com/IRNAS/ppk2-api-python/blob/master/images/power-profiler-kit-II.jpg)
 
 ## Features
-The main features of the PPK2 Python API (will) include:
-* All nRF Connect Power Profiler GUI functionality - In progress
-* Data logging to user selectable format - In progress
-* Cross-platform support
+
+- **13 MCP tools** for complete PPK2 control via LLMs
+- **100kHz sampling rate** for detailed power analysis
+- **Real-time streaming** via TCP for live visualization
+- **Source and Ampere meter modes** for flexible measurement setups
+- **Cross-platform support** (macOS, Windows, Linux)
+
+## Quick Start
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/Bucknalla/ppk2-mcp.git
+cd ppk2-mcp
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### Using with Claude Code
+
+The repository includes a `.mcp.json` configuration file. Simply open the project in Claude Code and the PPK2 MCP server will be available.
+
+Alternatively, add to your Claude Code MCP settings:
+
+```json
+{
+  "mcpServers": {
+    "ppk2": {
+      "command": "uvx",
+      "args": [
+        "--with", "pyserial",
+        "--with", "fastmcp",
+        "fastmcp", "run", "src/ppk2_mcp_server.py"
+      ]
+    }
+  }
+}
+```
+
+### Running Standalone
+
+```bash
+python src/ppk2_mcp_server.py
+```
+
+## MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `list_devices` | List all connected PPK2 devices |
+| `connect` | Connect to a PPK2 on a specified port |
+| `disconnect` | Disconnect from the PPK2 |
+| `get_status` | Get connection status, mode, and voltage |
+| `set_mode` | Set mode: `source` (PPK2 powers DUT) or `ampere` (external supply) |
+| `set_voltage` | Set voltage in millivolts (800-5000mV) |
+| `toggle_power` | Turn DUT power on/off |
+| `measure` | Capture measurements and return statistics |
+| `measure_raw` | Return raw samples for visualization (max 1s) |
+| `measure_to_file` | Save measurements to CSV (max 60s) |
+| `start_streaming` | Start TCP streaming for real-time data |
+| `stop_streaming` | Stop the measurement stream |
+| `get_streaming_status` | Check streaming status |
+
+## Example Workflows
+
+### Basic Power Measurement
+
+```
+User: Measure the power consumption of my device for 5 seconds
+
+AI: I'll connect to the PPK2 and measure power consumption.
+
+1. list_devices() → Found PPK2 at /dev/ttyACM0
+2. connect("/dev/ttyACM0") → Connected
+3. set_mode("source") → Source meter mode enabled
+4. set_voltage(3300) → Voltage set to 3.3V
+5. toggle_power("on") → DUT powered on
+6. measure(5.0) → Results:
+   - Average: 15.2 mA
+   - Min: 0.5 mA  
+   - Max: 125.8 mA
+   - Samples: 500,000
+```
+
+### Real-Time Streaming
+
+```bash
+# 1. Start streaming via MCP
+start_streaming(port=5555)
+
+# 2. Run the visualization tool
+python examples/stream_consumer.py --split --window 2
+
+# 3. Stop when done
+stop_streaming()
+```
+
+## Live Visualization
+
+The included `stream_consumer.py` provides real-time power visualization:
+
+```bash
+# Basic view
+python examples/stream_consumer.py
+
+# Split view (average + peaks) with 2-second window
+python examples/stream_consumer.py --split --window 2
+
+# Log scale for high dynamic range
+python examples/stream_consumer.py --log --split
+```
+
+**Options:**
+- `--window N` - Display N seconds of data (default: 5)
+- `--split` - Separate plots for average and min/max
+- `--log` - Logarithmic Y-axis
+- `--smooth N` - Smoothing window size (default: 20)
+
+## Packaging & Distribution
+
+Build an MCPB bundle for distribution:
+
+```bash
+python package_extension.py
+# Creates: dist/ppk2-power-profiler-1.0.0.mcpb
+```
+
+Install the bundle:
+```bash
+# Double-click the .mcpb file, or:
+mcpb install dist/ppk2-power-profiler-1.0.0.mcpb
+```
+
+## Python API
+
+For direct Python usage without MCP, see the API documentation below.
+
+### Source Meter Mode
+
+```python
+from ppk2_api.ppk2_api import PPK2_API
+
+ppk2 = PPK2_API("/dev/ttyACM0", timeout=1)
+ppk2.get_modifiers()
+ppk2.use_source_meter()
+ppk2.set_source_voltage(3300)  # 3.3V
+ppk2.start_measuring()
+
+for i in range(100):
+    data = ppk2.get_data()
+    if data:
+        samples, _ = ppk2.get_samples(data)
+        avg = sum(samples) / len(samples)
+        print(f"Average: {avg:.2f} uA")
+    time.sleep(0.01)
+
+ppk2.stop_measuring()
+```
+
+### Ampere Meter Mode
+
+```python
+ppk2.use_ampere_meter()  # External power supply
+ppk2.set_source_voltage(3300)  # Set expected voltage for accuracy
+ppk2.start_measuring()
+# ... measure current from external supply
+```
+
+### Multiprocessing Version
+
+For continuous sampling without data loss:
+
+```python
+from ppk2_api.ppk2_api import PPK2_MP
+
+ppk2 = PPK2_MP("/dev/ttyACM0")
+ppk2.get_modifiers()
+ppk2.use_source_meter()
+ppk2.set_source_voltage(3300)
+ppk2.start_measuring()
+
+# Background thread handles continuous sampling
+for i in range(10):
+    data = ppk2.get_data()
+    if data:
+        samples, _ = ppk2.get_samples(data)
+        print(f"Captured {len(samples)} samples")
+    time.sleep(1)  # Can do other work
+
+ppk2.stop_measuring()
+```
 
 ## Requirements
-Unlike the original Power Profiler Kit, the PPK2 uses Serial to communicate with the computer. No additional modules are required.
 
-## Usage
-At this point in time the library provides the basic API with a basic example showing how to read data and toggle DUT power.
+- Python 3.9+
+- Nordic PPK2 hardware
+- Serial port access (may require permissions on Linux)
 
-To enable power monitoring in Source mode implement the following sequence:
-```
-ppk2_test = PPK2_API("/dev/ttyACM3")  # serial port will be different for you
-ppk2_test.get_modifiers()
-ppk2_test.use_source_meter()  # set source meter mode
-ppk2_test.set_source_voltage(3300)  # set source voltage in mV
-ppk2_test.start_measuring()  # start measuring
+## License
 
-# read measured values in a for loop like this:
-for i in range(0, 1000):
-    read_data = ppk2_test.get_data()
-    if read_data != b'':
-        samples = ppk2_test.get_samples(read_data)
-        print(f"Average of {len(samples)} samples is: {sum(samples)/len(samples)}uA")
-    time.sleep(0.001)  # lower time between sampling -> less samples read in one sampling period
-    
-ppk2_test.stop_measuring()
-```
+Licensed under [GPL V2](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html).
 
-## Multiprocessing version
-Regular version will struggle to get all samples. Multiprocessing version spawns another process in the background which polls the device constantly for new samples and holds the last 10 seconds of data (default, configurable) in the buffer so get_data() can be called less frequently.
-
-```
-ppk2_test = PPK2_MP("/dev/ttyACM3")  # serial port will be different for you
-ppk2_test.get_modifiers()
-ppk2_test.use_source_meter()  # set source meter mode
-ppk2_test.set_source_voltage(3300)  # set source voltage in mV
-ppk2_test.start_measuring()  # start measuring
-
-# read measured values in a for loop like this:
-for i in range(0, 10):
-    read_data = ppk2_test.get_data()
-    if read_data != b'':
-        samples = ppk2_test.get_samples(read_data)
-        print(f"Average of {len(samples)} samples is: {sum(samples)/len(samples)}uA")
-    time.sleep(1)  # we can do other stuff while the background process if fetching samples
-
-ppk2_test.stop_measuring()
-
-```
-
-## Licensing
-pp2-api-python is licensed under [GPL V2 license](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html).
-
-What this means is that you can use this hardware and documentation without paying a royalty and knowing that you'll be able to use your version forever. You are also free to make changes but if you share these changes then you have to do so on the same conditions that you enjoy.
-
-IRNAS is name and mark of Institute IRNAS. You may use these name and terms only to attribute the appropriate entity as required by the Open Licence referred to above. You may not use them in any other way and in particular you may not use them to imply endorsement or authorization of any hardware that you design, make or sell.
+Based on [ppk2-api-python](https://github.com/IRNAS/ppk2-api-python) by IRNAS.
