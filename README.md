@@ -56,21 +56,20 @@ python src/ppk2_mcp_server.py
 
 ## MCP Tools
 
-| Tool | Description |
-|------|-------------|
-| `list_devices` | List all connected PPK2 devices |
-| `connect` | Connect to a PPK2 on a specified port |
-| `disconnect` | Disconnect from the PPK2 |
-| `get_status` | Get connection status, mode, and voltage |
-| `set_mode` | Set mode: `source` (PPK2 powers DUT) or `ampere` (external supply) |
-| `set_voltage` | Set voltage in millivolts (800-5000mV) |
-| `toggle_power` | Turn DUT power on/off |
-| `measure` | Capture measurements and return statistics |
-| `measure_raw` | Return raw samples for visualization (max 1s) |
-| `measure_to_file` | Save measurements to CSV (max 60s) |
-| `start_streaming` | Start TCP streaming for real-time data |
-| `stop_streaming` | Stop the measurement stream |
-| `get_streaming_status` | Check streaming status |
+| Tool                   | Description                              | Arguments                                                                                                                   |
+| ---------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `list_devices`         | List all connected PPK2 devices          | _(none)_                                                                                                                    |
+| `connect`              | Connect to a PPK2 device                 | `port` (serial port path)                                                                                                   |
+| `disconnect`           | Disconnect from the PPK2                 | _(none)_                                                                                                                    |
+| `get_status`           | Get connection status, mode, and voltage | _(none)_                                                                                                                    |
+| `set_mode`             | Set measurement mode                     | `mode`: `source` or `ampere`                                                                                                |
+| `set_voltage`          | Set voltage in millivolts                | `millivolts`: 800-5000                                                                                                      |
+| `toggle_power`         | Turn DUT power on/off                    | `state`: `on` or `off`                                                                                                      |
+| `measure`              | Capture power measurements               | `duration_seconds`, `output`: `stats`/`raw`/`file`, `include_digital`, `output_file`                                        |
+| `capture_trigger`      | Capture when conditions met              | `current_above_uA`, `current_below_uA`, `digital_d0`-`d7`, `trigger_logic`, `timeout_seconds`, `duration_seconds`, `output` |
+| `start_streaming`      | Start TCP streaming                      | `port` (default: 5555), `include_digital`                                                                                   |
+| `stop_streaming`       | Stop the measurement stream              | _(none)_                                                                                                                    |
+| `get_streaming_status` | Check streaming status                   | _(none)_                                                                                                                    |
 
 ## Example Workflows
 
@@ -88,7 +87,7 @@ AI: I'll connect to the PPK2 and measure power consumption.
 5. toggle_power("on") → DUT powered on
 6. measure(5.0) → Results:
    - Average: 15.2 mA
-   - Min: 0.5 mA  
+   - Min: 0.5 mA
    - Max: 125.8 mA
    - Samples: 500,000
 ```
@@ -104,6 +103,39 @@ python examples/stream_consumer.py --split --window 2
 
 # 3. Stop when done
 stop_streaming()
+```
+
+### Triggered Capture
+
+```
+User: Capture power data when my device wakes up (current goes above 10mA)
+
+AI: I'll set up a triggered capture that waits for the current spike.
+
+1. list_devices() → Found PPK2 at /dev/ttyACM0
+2. connect("/dev/ttyACM0") → Connected
+3. set_mode("source") → Source meter mode enabled
+4. set_voltage(3300) → Voltage set to 3.3V
+5. toggle_power("on") → DUT powered on
+6. capture_trigger(current_above_uA=10000, duration_seconds=2.0, timeout_seconds=60) →
+   - Triggered: True
+   - Trigger time: 12,450 ms (waited 12.4 seconds)
+   - Condition met: "current > 10000 uA"
+   - Captured 2 seconds of data:
+     - Average: 45.3 mA
+     - Peak: 152.7 mA
+```
+
+```
+User: Capture when D0 goes high (GPIO indicating task start)
+
+AI: I'll trigger on the digital input.
+
+1. capture_trigger(digital_d0="high", duration_seconds=1.0, output="file", output_file="task_power.csv") →
+   - Triggered: True
+   - Trigger time: 3,200 ms
+   - Condition met: "D0 = high"
+   - Saved 100,000 samples to task_power.csv
 ```
 
 ## Live Visualization
